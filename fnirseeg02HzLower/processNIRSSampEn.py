@@ -262,10 +262,10 @@ def doMBL(c, eps=[[.974, .693],[.35,2.1]], DPF=[5.98, 7.15], sd=2.5, filt=False,
 def poolFunc(inp):
     r, sen = doMBL(inp[0], filt=True,ica=False, mrk=inp[-1], oxy=inp[-2], subj=str(inp[1]),trial=str(inp[2]))
     print("Subject " + str(inp[1]) + "_" + str(inp[2]) + " Done!")
-    if not os.path.isdir("EMBCresultsNIRSSampEn"+str(inp[-2])+"/"):
-        os.mkdir("EMBCresultsNIRSSampEn"+str(inp[-2])+"/")
-    np.savez("EMBCresultsNIRSSampEn"+str(inp[-2])+"/results" + str(inp[1]) + "_" + str(inp[2]) + ".npy", *r)
-    np.save("EMBCresultsNIRSSampEn"+str(inp[-2])+"/sen" + str(inp[1]) + "_" + str(inp[2]) + ".npy", sen)
+    if not os.path.isdir("PLOSresultsNIRSSampEn"+str(inp[-2])+"/"):
+        os.mkdir("PLOSresultsNIRSSampEn"+str(inp[-2])+"/")
+    np.savez("PLOSresultsNIRSSampEn"+str(inp[-2])+"/results" + str(inp[1]) + "_" + str(inp[2]) + ".npy", *r)
+    np.save("PLOSresultsNIRSSampEn"+str(inp[-2])+"/sen" + str(inp[1]) + "_" + str(inp[2]) + ".npy", sen)
 
 
 if __name__ == "__main__":
