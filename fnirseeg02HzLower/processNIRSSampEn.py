@@ -12,7 +12,6 @@ import matplotlib.cm as cm
 import shelve
 import complexityMeasures as compM
 from multiprocessing import Pool
-from sklearn.decomposition import FastICA
 from sklearn.decomposition import PCA
 import pywt
 import mne.viz as mviz
@@ -35,100 +34,13 @@ def waveletThresh(data, wavelet='db5', thresh=5, mode=False):
         else:
             coeff[k+1] = temp[sum(lengths[:k]):sum(lengths[:k])+lengths[k]]
 
-#    for ll, c in enumerate(coeff[1:]): # Don't eliminate approx coefficient
-#        if len(coeff) - ll < 4:
-#            break
-#        if ll is 0:
-#            temp = np.hstack(coeff)
-#        else:
-#            temp = np.hstack(coeff[:-ll])
-#        fullk = np.mean(((temp - np.mean(temp))/np.std(temp))**4)
-#        if fullk > thresh:
-#            coeff[-(ll+1)][:] = 0
-#        else:
-#            break
     return pywt.waverec(coeff, wavelet)[:len(data)]
-
-def ICAjointProbCompRej(data, ignArr, plot=False):
-    inputICAmatrix = np.vstack(data[ignArr])
-    # Get amount of components correspond to 99.99% of variance with PCA
-    clfP = PCA(n_components=.9999)
-    pcares = clfP.fit_transform(inputICAmatrix.T)
-    
-    # Use that for prior amount of components to extract from ICA
-    clfI = FastICA(n_components=pcares.shape[1], tol=0.01)
-    icares = clfI.fit_transform(inputICAmatrix.T)
-
-    if plot:
-     # Plotting before
-        info = mne.create_info(pcares.shape[1], c.fs)
-        raw = mne.io.RawArray(icares.T, info)
-       
-        raw.plot(n_channels=icares.shape[1], scalings='auto', show=False, block=False)
-       
-        info2 = mne.create_info(len(np.vstack(data[ignArr])), c.fs)
-        raw2 = mne.io.RawArray(np.vstack(data[ignArr]), info2)
-       
-        raw2.plot(n_channels=len(np.vstack(data[ignArr])), scalings='auto', show=False, block=False)
-    pft = np.apply_along_axis(lambda a: abs(np.fft.fft(a)**2), 0, icares) 
-    pft = pft/np.sum(pft,0)
-    pent = -np.apply_along_axis(lambda p: np.sum(p[p>0]*np.log2(p[p>0])),0,pft)/np.log2(len(pft))
-    print(pent)
-    kurt = stats.kurtosis(icares)
-    ps, edges = np.histogramdd((pent,stats.kurtosis(icares)), bins=int(len(pent)**(1/3)))
-    print(np.max(ps))
-    ps = ps/np.max(ps)
-
-    # Joint Prob detection
-    for  k in range(len(kurt)):
-        indexi = np.where(edges[0] <= pent[k])[0][-1]
-        indexj = np.where(edges[1] <= kurt[k])[0][-1]
-        if indexi == ps.shape[0]:
-            indexi -= 1
-        if indexj == ps.shape[1]:
-            indexj -= 1
-        if ps[indexi,indexj] > .8:
-#            plt.plot(icares[:,k])
-#            plt.show()
-            icares[:,k] = 0
-    data[ignArr] = clfI.inverse_transform(icares).T.reshape(sum(ignArr), 2, len(icares))
-    if plot:
-       info3 = mne.create_info(ret[ignArr].shape[1], c.fs)
-       raw3 = mne.io.RawArray(ret[ignArr][0], info3)
-       
-       raw3.plot(n_channels=len(temp), scalings='auto', show=False, block=False)
-       plt.show()
-
-    return data
 
 def detrend(data, order=1):
     Y = data - data.mean()
     X = np.array([[i**x for i in range(len(data))] for x in range(order+1)], dtype=float)
     W = np.linalg.pinv((X).dot(X.T)).dot(X).dot(Y.T)
     return Y - W.dot(X)# + data.mean()
-
-def ICAkurtElim(data, plot=False, ignoreArr=None):
-        clf = FastICA(n_components=2)
-        Z = clf.fit_transform(data.T)
-        Kurt = np.mean(((Z - np.mean(Z,0))/np.std(Z,0))**4,0)
-        if plot:
-            fig, ax = plt.subplots(2,1)
-            ax = ax.ravel()
-            for zz in range(Z.shape[1]):
-                if ignoreArr is None:
-                    acc = np.array([True for k in range(len(mntNIRS))])
-                else:
-                    acc = ignoreArr
-                mviz.plot_topomap(clf.components_[zz,:], mntNIRS[acc, :], show=False, axes=ax[zz])
-                ax[zz].set_title("IC " + str(zz) + " {0:.2f}".format(Kurt[zz]))
-            fig2, ax2 = plt.subplots(2,1)
-            ax2 = ax2.ravel()
-            for zz in range(Z.shape[1]):
-                ax2[zz].plot(Z[:,zz])
-                ax2[zz].set_title("IC " + str(zz) + " {0:.2f}".format(Kurt[zz]))
-            plt.show()
-        Z[:,Kurt > 4] = 0
-        return clf.inverse_transform(Z).T
 
 def interpolateBadChans(data, chansBad, ignArr, mntArr):
     for chans in chansBad:
@@ -181,8 +93,6 @@ def doMBL(c, eps=[[.974, .693],[.35,2.1]], DPF=[5.98, 7.15], sd=2.5, filt=False,
                 else:
                     beerlamb.append(np.zeros((2, len(lowW)-c.fs*60)))
             beerlamb = np.array(beerlamb)
-            if ica:
-                ICAjointProbCompRej(beerlamb,ignArr)
     
         tempret = []
         output = []
